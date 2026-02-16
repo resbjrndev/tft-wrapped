@@ -4,15 +4,15 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(request: NextRequest) {
     const riotAPI = new RiotAPIService();
     try {
-        const { gameName, tagLine, year } = await request.json();
-        if (!gameName || !tagLine || !year) {
+        const { gameName, tagLine, year="2024" } = await request.json();
+        if (!gameName || !tagLine) {
             return NextResponse.json(
                 { error: 'Missing required fields' },
                 { status: 400 }
             );
         }
         let account = await riotAPI.getAccountByRiotId(gameName, tagLine)
-        let matches = await riotAPI.getAllMatchesForYear(account.puuid, year);
+        let matches = await riotAPI.getAllMatchesForYear(account.puuid);
         return NextResponse.json({ account, matches });
     } catch (error) {
         return NextResponse.json(

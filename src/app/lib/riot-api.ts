@@ -10,8 +10,9 @@ export class RiotAPIService {
   }
 
   async getAccountByRiotId(gameName: string, tagLine: string) {
+    let taglineClean = tagLine.replace("#", "");
     const response = await axios.get(
-      `${RIOT_API_BASE_URL}/riot/account/v1/accounts/by-riot-id/${gameName}/${tagLine}`,
+      `${RIOT_API_BASE_URL}/riot/account/v1/accounts/by-riot-id/${gameName}/${taglineClean}`,
       {
         headers: { "X-Riot-Token": this.apiKey },
       },
