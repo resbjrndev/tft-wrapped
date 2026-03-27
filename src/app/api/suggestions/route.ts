@@ -1,10 +1,15 @@
 import { RiotAPIService } from '@/app/lib/riot-api';
 import { NextRequest, NextResponse } from 'next/server';
-import axios, { AxiosError } from 'axios';
 
+type ErrorWithStatus = { response?: { status?: number } };
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const query = (searchParams.get('query') || '').trim();
+  // Accept both q and query to match the frontend.
+  const query = (
+    searchParams.get('q') ||
+    searchParams.get('query') ||
+    ''
+  ).trim();
 
   if (query.length < 3) return NextResponse.json({ suggestions: [] });
 
@@ -21,8 +26,8 @@ export async function GET(request: NextRequest) {
       suggestions: [`${account.gameName}#${account.tagLine}`]
     });
   } catch (error) {
-    const axiosError = error as AxiosError;
-    if (axiosError?.response?.status === 404) {
+    const status = (error as ErrorWithStatus)?.response?.status;
+    if (status === 404) {
       return NextResponse.json({ suggestions: [] });
     }
     console.error('Error fetching suggestions:', error);

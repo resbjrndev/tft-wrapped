@@ -26,34 +26,26 @@ export const PlayerSearch = () => {
 
   useEffect(() => {
     const trimmed = rioterQuery.trim();
-    if (trimmed.length < 3) {
-      setSuggestions([]);
-      setIsOpen(false);
-      return;
-    }
+    if (trimmed.length < 3) return;
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      const fetchSuggestions = async () => {
-        await fetch(`/api/suggestions?q=${encodeURIComponent(trimmed)}`, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-          signal: controller.signal
-        })
-          .then((res) => res.json())
-          .then((data) => {
-            setSuggestions(data.suggestions || []);
-            setIsOpen(true);
-          })
-          .catch((err) => {
-            if (err.name === 'AbortError') return;
-            console.error('Error fetching suggestions:', err);
-            setSuggestions([]);
-            setIsOpen(false);
-          });
-      };
-
-      fetchSuggestions();
+    const timeoutId = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/suggestions?q=${encodeURIComponent(trimmed)}`,
+          {
+            signal: controller.signal,
+            headers: { 'Content-Type': 'application/json' }
+          }
+        );
+        const data = await res.json();
+        setSuggestions(data.suggestions || []);
+        setIsOpen(true);
+      } catch (err: any) {
+        if (err.name === 'AbortError') return;
+        setSuggestions([]);
+        setIsOpen(false);
+      }
     }, 500);
 
     return () => {
@@ -75,10 +67,17 @@ export const PlayerSearch = () => {
               type='text'
               placeholder='Game Name'
               value={rioterQuery}
-              onChange={(e) => setRioterQuery(e.target.value)}
+              onChange={(e) => {
+                const next = e.target.value;
+                setRioterQuery(next);
+                if (next.trim().length < 3) {
+                  setSuggestions([]);
+                  setIsOpen(false);
+                }
+              }}
               onFocus={() => suggestions.length > 0 && setIsOpen(true)}
             />
-            {suggestions.length > 0 && (
+            {isOpen && suggestions.length > 0 && (
               <motion.ul className='bg-white border border-gray-300 rounded mt-1'>
                 {suggestions.map((suggestion, index) => (
                   <li
