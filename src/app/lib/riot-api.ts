@@ -1,6 +1,12 @@
 import axios from "axios";
 
 const RIOT_API_BASE_URL = "https://europe.api.riotgames.com";
+const PAGE_SIZE = 10;
+const BATCH_SIZE = 5;
+const PAGE_DELAY_MS = 250;
+const BATCH_DELAY_MS = 300;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export class RiotAPIService {
   private apiKey: string;
@@ -17,6 +23,7 @@ export class RiotAPIService {
         headers: { "X-Riot-Token": this.apiKey },
       },
     );
+    console.log("Account response:", response.data);
     return response.data;
   }
 
@@ -32,6 +39,7 @@ export class RiotAPIService {
         headers: { "X-Riot-Token": this.apiKey },
       },
     );
+    console.log(`Match IDs for puuid ${puuid} (start=${start}, count=${count}):`, response.data);
     return response.data;
   }
 
@@ -43,12 +51,12 @@ export class RiotAPIService {
       .then((response) => response.data);
   }
 
-  async getAllMatchesForYear(puuid: string, year = 2024) {
+  async getAllMatchesForYear(puuid: string, year: number, maxMatches = 20) {
     const allMatchIds: string[] = [];
     let start = 0;
-    const count = 100; //max per request
+    const count = PAGE_SIZE;
 
-    while (true) {
+    while (allMatchIds.length < maxMatches) {
       const matchIds = await this.getMatchIdsByPuuid(puuid, start, count);
 
       if (matchIds.length === 0) break;
@@ -58,16 +66,29 @@ export class RiotAPIService {
       if (matchIds.length < count) break;
       start += count;
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await sleep(PAGE_DELAY_MS);
     }
 
-    const matches = await Promise.all(
-      allMatchIds.map((matchId) => this.getMatchById(matchId)),
-    );
+    const cappedMatchIds = allMatchIds.slice(0, maxMatches);
+    const matches: any[] = [];
+
+    for (let index = 0; index < cappedMatchIds.length; index += BATCH_SIZE) {
+      const batch = cappedMatchIds.slice(index, index + BATCH_SIZE);
+      const batchMatches = await Promise.all(
+        batch.map((matchId) => this.getMatchById(matchId)),
+      );
+      matches.push(...batchMatches);
+
+      if (index + BATCH_SIZE < cappedMatchIds.length) {
+        await sleep(BATCH_DELAY_MS);
+      }
+    }
 
     const yearStart = new Date(`${year}-01-01`).getTime();
     const yearEnd = new Date(`${year}-12-31`).getTime();
 
+
+    console.log(`Filtering matches for year ${year} (timestamps between ${yearStart} and ${yearEnd})`);
     return matches.filter((match) => {
       const matchTime = match.info.game_datetime;
       return matchTime >= yearStart && matchTime <= yearEnd;

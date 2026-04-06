@@ -1,12 +1,13 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Button } from './Button';
+import { processPlayerStats } from '../lib/stats.processor';
 
 export const PlayerSearch = () => {
   const [rioterQuery, setRioterQuery] = useState<string>('');
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [matches, setMatches] = useState<any>(null);
+
 
   const onPlayerSearch = async (e?: React.FormEvent<HTMLFormElement>) => {
     if (e) e.preventDefault();
@@ -18,41 +19,20 @@ export const PlayerSearch = () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ gameName: gameName, tagLine: tagLine })
+    }).catch((error) => {
+
+      console.error('Fetch error:', error);
     });
 
+    if (!response) return;
+
     const data = await response.json();
-    console.log(data);
+
+
+    console.log(" PLAYER DATA", data);
+    setMatches(data);
+    processPlayerStats(data.matches, data.account.puuid)
   };
-
-  useEffect(() => {
-    const trimmed = rioterQuery.trim();
-    if (trimmed.length < 3) return;
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(async () => {
-      try {
-        const res = await fetch(
-          `/api/suggestions?q=${encodeURIComponent(trimmed)}`,
-          {
-            signal: controller.signal,
-            headers: { 'Content-Type': 'application/json' }
-          }
-        );
-        const data = await res.json();
-        setSuggestions(data.suggestions || []);
-        setIsOpen(true);
-      } catch (err: any) {
-        if (err.name === 'AbortError') return;
-        setSuggestions([]);
-        setIsOpen(false);
-      }
-    }, 500);
-
-    return () => {
-      clearTimeout(timeoutId);
-      controller.abort();
-    };
-  }, [rioterQuery]);
 
   return (
     <motion.div className='flex flex-col'>
@@ -67,37 +47,20 @@ export const PlayerSearch = () => {
               type='text'
               placeholder='Game Name'
               value={rioterQuery}
-              onChange={(e) => {
-                const next = e.target.value;
-                setRioterQuery(next);
-                if (next.trim().length < 3) {
-                  setSuggestions([]);
-                  setIsOpen(false);
-                }
-              }}
-              onFocus={() => suggestions.length > 0 && setIsOpen(true)}
+              onChange={(e) => setRioterQuery(e.target.value)}
             />
-            {isOpen && suggestions.length > 0 && (
-              <motion.ul className='bg-white border border-gray-300 rounded mt-1'>
-                {suggestions.map((suggestion, index) => (
-                  <li
-                    key={index}
-                    className='p-2 hover:bg-gray-200 cursor-pointer'
-                    onMouseDown={() => {
-                      setRioterQuery(suggestion);
-                      setIsOpen(false);
-                      onPlayerSearch();
-                    }}
-                  >
-                    {suggestion}
-                  </li>
-                ))}
-              </motion.ul>
-            )}
             <Button type='submit'> Search</Button>
           </form>
         </motion.div>
+
+
+
       </div>
+
+
+      <pre>
+        {matches ? JSON.stringify(matches.account, null, 2) : 'No matches found'}
+      </pre>
     </motion.div>
   );
 };
