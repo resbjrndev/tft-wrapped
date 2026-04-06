@@ -29,7 +29,6 @@ export const PlayerSearch = () => {
     const data = await response.json();
 
 
-    console.log(" PLAYER DATA", data);
     setMatches(data);
     processPlayerStats(data.matches, data.account.puuid)
   };
