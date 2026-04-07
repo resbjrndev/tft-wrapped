@@ -48,7 +48,7 @@ export class RiotAPIService {
     puuid: string,
     start: number = 0,
     count: number = 20
-  ) {
+  ): Promise<string[]> {
     const response = await axios.get(
       `${RIOT_API_BASE_URL}/tft/match/v1/matches/by-puuid/${puuid}/ids`,
       {
