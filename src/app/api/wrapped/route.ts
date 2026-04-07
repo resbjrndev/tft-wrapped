@@ -12,11 +12,7 @@ export async function POST(request: NextRequest) {
 
   const riotAPI = new RiotAPIService();
   try {
-    const {
-      gameName,
-      tagLine,
-      year = new Date().getFullYear(),
-    } = await request.json();
+    const { gameName, tagLine } = await request.json();
     if (!gameName || !tagLine) {
       return NextResponse.json(
         { error: 'Missing required fields' },
@@ -24,21 +20,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const parsedYear = Number(year);
-   // const parsedMaxMatches = Math.min(Math.max(Number(maxMatches), 1), 100);
-
-    if (!Number.isInteger(parsedYear) || parsedYear < 2019) {
-      return NextResponse.json(
-        { error: 'Invalid year' },
-        { status: 400 }
-      );
-    }
-
     const account = await riotAPI.getAccountByRiotId(gameName, tagLine);
-    const matches = await riotAPI.getAllMatchesForYear(
-      account.puuid,
-      parsedYear,
-    );
+    const puuid =
+      typeof account === 'string'
+        ? account
+        : (account as { puuid: string }).puuid;
+    const matches = await riotAPI.getLatestSetMatchesForPlayerSimple(puuid);
     return NextResponse.json({ account, matches });
   } catch (error) {
     if (axios.isAxiosError(error)) {

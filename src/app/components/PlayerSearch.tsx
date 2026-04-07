@@ -3,11 +3,11 @@ import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Button } from './Button';
 import { processPlayerStats } from '../lib/stats.processor';
+import { WrappedResponse } from '../types/riot';
 
 export const PlayerSearch = () => {
   const [rioterQuery, setRioterQuery] = useState<string>('');
-  const [matches, setMatches] = useState<any>(null);
-
+  const [matches, setMatches] = useState<WrappedResponse | null>(null);
 
   const onPlayerSearch = async (e?: React.FormEvent<HTMLFormElement>) => {
     if (e) e.preventDefault();
@@ -20,7 +20,6 @@ export const PlayerSearch = () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ gameName: gameName, tagLine: tagLine })
     }).catch((error) => {
-
       console.error('Fetch error:', error);
     });
 
@@ -28,9 +27,12 @@ export const PlayerSearch = () => {
 
     const data = await response.json();
 
-
     setMatches(data);
-    processPlayerStats(data.matches, data.account.puuid)
+    processPlayerStats(
+      data.matches.matches,
+      data.account.puuid,
+      data.matches.latestSetNumber ?? null
+    );
   };
 
   return (
@@ -51,14 +53,12 @@ export const PlayerSearch = () => {
             <Button type='submit'> Search</Button>
           </form>
         </motion.div>
-
-
-
       </div>
 
-
       <pre>
-        {matches ? JSON.stringify(matches.account, null, 2) : 'No matches found'}
+        {matches
+          ? JSON.stringify(matches.account, null, 2)
+          : 'No matches found'}
       </pre>
     </motion.div>
   );
